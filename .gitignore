@@ -1,0 +1,7 @@
+*~
+*.bak
+.*.swp
+*.o
+*.list
+*.ihx
+*.srec

@@ -1,0 +1,4 @@
+mspbinclk, a binary clock on a TI MSP430G2x52
+
+mspbinclk is simple program for TI's MSP430G2x52 MCUs that allows you
+to use one as a binary clock driver.
