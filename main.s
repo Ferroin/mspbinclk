@@ -73,7 +73,7 @@
 
 ; Start the WDT as an interval timer for the update routine.
 ; This will go off every 32768th cycle.
-        MOV     #0x5a18,#0x0120
+        MOV     #0x5a18,&0x0120
 
 ; Finally, enable interrupts, and then sleep till we get one.
         EINT
@@ -119,7 +119,7 @@
         RETI
 
 ; Timer_A main interrupt handler (Used to update the counters)
-.org    0xff80
+.org    0xff90
         INC      r4
         CLRZ
         CMP     #0x0258, r4
@@ -140,7 +140,7 @@
         RETI
 
 ; P1 Interrupt handler (Used to emulate chip enable)
-.org    0xffb0
+.org    0xffb8
         CLRZ
         BIT.B   #0x01,  &0x0024
         JNE      0x0a
@@ -168,14 +168,14 @@
 .org    0xffe0
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Unused
-.word   0xffb0 ; Port 1
+.word   0xffb8 ; Port 1
 .word   0xffd8 ; Port 2
 .word   0xff00 ; USI
 .word   0xffd8 ; ADC10
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Timer0_A3 secondary
-.word   0xff80 ; Timer0_A3 primary
+.word   0xff90 ; Timer0_A3 primary
 .word   0xfe80 ; WDT+
 .word   0xffd8 ; Comparator_A+
 .word   0xffd8 ; Unused
