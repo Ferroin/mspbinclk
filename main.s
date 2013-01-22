@@ -61,7 +61,6 @@
         MOV     #0x2710,&0x0172
         MOV     #0x0010,&0x0162
 
-; Some final initializations
 ; These aren't really needed, but they are good practice
 ; r4 is used as a subsecond counter
         CLR      r4
@@ -72,36 +71,19 @@
 ; r6 is used as a scratch register during updates
         CLR      r7
 
-; Jump to the start of the actual program
-        BR      #0xfe00
+; Start the WDT as an interval timer for the update routine.
+; This will go off every 32768th cycle.
+        MOV     #0x5a18,#0x0120
 
-; Main Program
-; This just calls the update routine repeatedly, waiting exactly 32 cycles
-; between each call. (this still translates to a couple hundred updates
-; each second)
-.org    0xfe00
+; Finally, enable interrupts, and then sleep till we get one.
         EINT
-        CALL    #0xfe80
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        JMP     $+2
-        NOP
-        BR      #0xfe00
+        BIS.B   #0x01,  &0x0000
+        BIS.B   #0x10,   r2
 
-; Beginning of subroutines
-; Update display
+; This branch should never get executed, but it's here just in case.
+        BR      &0xffdc
+
+; WDT+ Interrupt handler (Used for display updates)
 .org    0xfe80
 ; Copy the two low bits of the hour count to the two high bits of r5
         MOV.B    r6,     r7
@@ -123,10 +105,9 @@
 ; Update P1
         BIC.B    r7,    &0x0021
         BIS.B    r7,    &0x0021
-        RET
+        RETI
 
-; Beginning of interrupt handlers
-; USI Interrupt handler
+; USI Interrupt handler (Used for SPI communication)
 .org    0xff00
         BIS.B   #0x01,  &0x0078
         MOV.B   &0x007c, r5
@@ -137,17 +118,19 @@
         BIC.B   #0x01,  &0x0078
         RETI
 
-; Timer_A main interrupt handler
+; Timer_A main interrupt handler (Used to update the counters)
 .org    0xff80
         INC      r4
         CLRZ
         CMP     #0x0258, r4
         JNE      0x1c
+; It's been ~1 min
         CLR      r4
         INC      r5
         CLRZ
         CMP     #0x003c, r5
         JNE      0x14
+; It's been ~1 hr
         CLR      r5
         INC      r6
         CLRZ
@@ -161,9 +144,11 @@
         CLRZ
         BIT.B   #0x01,  &0x0024
         JNE      0x0a
+; Switch to enabled mode
         BIC.B   #0x01,  &0x0024
         BIC.B   #0x01,  &0x0078
         JMP      0x04
+; Switch to disabled mode
         BIS.B   #0x01,  &0x0024
         BIS.B   #0x01,  &0x0078
         CLR     &0x007c
@@ -191,7 +176,7 @@
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Timer0_A3 secondary
 .word   0xff80 ; Timer0_A3 primary
-.word   0xffd8 ; WDT+
+.word   0xfe80 ; WDT+
 .word   0xffd8 ; Comparator_A+
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Unused
