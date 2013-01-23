@@ -58,7 +58,7 @@
 
 ; Timer_A inicialization
         MOV     #0x0210,&0x0160
-        MOV     #0x2710,&0x0172
+        MOV     #0xea60,&0x0172
         MOV     #0x0010,&0x0162
 
 ; These aren't really needed, but they are good practice
@@ -71,20 +71,43 @@
 ; r6 is used as a scratch register during updates
         CLR      r7
 
-; Start the WDT as an interval timer for the update routine.
-; This will go off every 32768th cycle.
-        MOV     #0x5a18,&0x0120
-
 ; Finally, enable interrupts, and then sleep till we get one.
         EINT
-        BIS.B   #0x01,  &0x0000
         BIS.B   #0x10,   r2
 
 ; This branch should never get executed, but it's here just in case.
         BR      &0xffdc
 
-; WDT+ Interrupt handler (Used for display updates)
-.org    0xfe80
+; USI Interrupt handler (Used for SPI communication)
+.org    0xff00
+        BIS.B   #0x01,  &0x0078
+        MOV.B   &0x007c, r5
+        MOV.B   &0x007d, r6
+        CLR      r4
+        CLR     &0x0170
+        CLR     &0x007c
+        BIC.B   #0x01,  &0x0078
+        RETI
+
+; Timer_A main interrupt handler (Used to update the counters)
+.org    0xff40
+        INC      r4
+        CLRZ
+        CMP     #0x0064, r4
+        JNE      0x1c
+; It's been ~1 min
+        CLR      r4
+        INC      r5
+        CLRZ
+        CMP     #0x003c, r5
+        JNE      0x14
+; It's been ~1 hr
+        CLR      r5
+        INC      r6
+        CLRZ
+        CMP     #0x0018, r6
+        JNE      0x02
+        CLR      r6
 ; Copy the two low bits of the hour count to the two high bits of r5
         MOV.B    r6,     r7
         AND.B   #0x03,   r7
@@ -105,38 +128,6 @@
 ; Update P1
         BIC.B    r7,    &0x0021
         BIS.B    r7,    &0x0021
-        RETI
-
-; USI Interrupt handler (Used for SPI communication)
-.org    0xff00
-        BIS.B   #0x01,  &0x0078
-        MOV.B   &0x007c, r5
-        MOV.B   &0x007d, r6
-        CLR      r4
-        CLR     &0x0170
-        CLR     &0x007c
-        BIC.B   #0x01,  &0x0078
-        RETI
-
-; Timer_A main interrupt handler (Used to update the counters)
-.org    0xff90
-        INC      r4
-        CLRZ
-        CMP     #0x0258, r4
-        JNE      0x1c
-; It's been ~1 min
-        CLR      r4
-        INC      r5
-        CLRZ
-        CMP     #0x003c, r5
-        JNE      0x14
-; It's been ~1 hr
-        CLR      r5
-        INC      r6
-        CLRZ
-        CMP     #0x0018, r6
-        JNE      0x02
-        CLR      r6
         RETI
 
 ; P1 Interrupt handler (Used to emulate chip enable)
@@ -175,8 +166,8 @@
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Timer0_A3 secondary
-.word   0xff90 ; Timer0_A3 primary
-.word   0xfe80 ; WDT+
+.word   0xff60 ; Timer0_A3 primary
+.word   0xffd8 ; WDT+
 .word   0xffd8 ; Comparator_A+
 .word   0xffd8 ; Unused
 .word   0xffd8 ; Unused
